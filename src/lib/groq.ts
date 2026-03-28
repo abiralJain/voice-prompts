@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import OpenAI, { APIError } from "openai";
 import {
   CATEGORY_LABELS,
   getCategoryDocs,
@@ -7,9 +7,23 @@ import {
 } from "@/lib/toolDocs";
 import type { ClassificationLlmResult, PromptMode, ToolPrompt } from "@/types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 
-const MODEL = "gemini-2.5-flash";
+/** Fast model for classification */
+const MODEL_CLASSIFY = process.env.GROQ_MODEL_CLASSIFY ?? "llama-3.1-8b-instant";
+/** Default model for prompt generation */
+const MODEL_GENERATE = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+
+function getClient(): OpenAI {
+  const key = process.env.GROQ_API_KEY;
+  if (!key?.trim()) {
+    throw new Error("GROQ_API_KEY is not set. Add it to .env.local.");
+  }
+  return new OpenAI({
+    apiKey: key,
+    baseURL: GROQ_BASE_URL,
+  });
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -20,21 +34,23 @@ export function isRateLimitError(err: unknown): boolean {
     const s = (err as { status: number }).status;
     if (s === 429) return true;
   }
+  if (err instanceof APIError) {
+    return err.status === 429;
+  }
   if (err instanceof Error) {
     return /429|RESOURCE_EXHAUSTED|quota exceeded|rate limit/i.test(err.message);
   }
   return false;
 }
 
-/** Parses "Please retry in 32.6s" from Gemini error JSON text */
 function parseRetryMsFromError(err: unknown): number | null {
   if (!(err instanceof Error)) return null;
   const m = err.message.match(/retry in ([\d.]+)s/i);
-  if (!m) return null;
-  return Math.ceil(parseFloat(m[1]) * 1000) + 400;
+  if (m) return Math.ceil(parseFloat(m[1]) * 1000) + 400;
+  return null;
 }
 
-async function withGeminiRetry<T>(call: () => Promise<T>): Promise<T> {
+async function withGroqRetry<T>(call: () => Promise<T>): Promise<T> {
   const maxAttempts = 5;
   let last: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -51,17 +67,19 @@ async function withGeminiRetry<T>(call: () => Promise<T>): Promise<T> {
   throw last;
 }
 
-/** Maps Gemini quota errors to UI-safe copy */
-export function userFacingGeminiError(err: unknown): string {
+export function userFacingLlmError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
-  if (/GenerateRequestsPerDay|PerDayPerModel|per day|daily limit/i.test(raw)) {
-    return "Gemini free tier daily limit reached. Try again tomorrow, or enable billing in Google AI Studio for higher limits.";
+  if (/PerDay|per day|daily limit|tokens per day/i.test(raw)) {
+    return "AI daily quota reached. Try again later or check your Groq account limits.";
   }
-  if (/PerMinute|per minute|GenerateRequestsPerMinute/i.test(raw)) {
-    return "Too many AI requests in a short time. Wait about a minute and try again.";
+  if (/PerMinute|per minute|rate limit|too many requests/i.test(raw)) {
+    return "Too many AI requests in a short time. Wait a minute and try again.";
   }
   if (isRateLimitError(err)) {
     return "The AI service is busy (rate limit). Wait a moment and try again.";
+  }
+  if (/GROQ_API_KEY|api key/i.test(raw)) {
+    return "Server configuration error: missing or invalid GROQ_API_KEY.";
   }
   return raw.length > 200 ? "Something went wrong with the AI request. Please try again." : raw;
 }
@@ -73,6 +91,45 @@ function stripJsonFence(text: string): string {
 function parseJson<T>(text: string): T {
   const cleaned = stripJsonFence(text);
   return JSON.parse(cleaned) as T;
+}
+
+async function chatCompletionText(params: {
+  system: string;
+  user: string;
+  temperature: number;
+  model: string;
+  jsonMode?: boolean;
+}): Promise<string> {
+  const client = getClient();
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: params.system },
+    { role: "user", content: params.user },
+  ];
+  const body: OpenAI.Chat.ChatCompletionCreateParams = {
+    model: params.model,
+    messages,
+    temperature: params.temperature,
+  };
+  if (params.jsonMode) {
+    body.response_format = { type: "json_object" };
+  }
+
+  try {
+    const res = await withGroqRetry(() => client.chat.completions.create(body));
+    return res.choices[0]?.message?.content?.trim() ?? "";
+  } catch (e) {
+    if (!params.jsonMode) throw e;
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/response_format|json_object|json mode|unsupported/i.test(msg)) throw e;
+    const res = await withGroqRetry(() =>
+      client.chat.completions.create({
+        model: params.model,
+        messages,
+        temperature: params.temperature,
+      }),
+    );
+    return res.choices[0]?.message?.content?.trim() ?? "";
+  }
 }
 
 /** Must appear at the top of Call 2 and Call 3 generation instructions. */
@@ -178,23 +235,14 @@ ${getClassificationToolList()}
 }`;
 
 export async function classifyTranscript(transcript: string): Promise<ClassificationLlmResult> {
-  const response = await withGeminiRetry(() =>
-    ai.models.generateContent({
-      model: MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: `TRANSCRIPT:\n"""${transcript}"""\n\nClassify and return JSON only.` }],
-        },
-      ],
-      config: {
-        systemInstruction: CLASSIFICATION_SYSTEM,
-        temperature: 0.3,
-      },
-    }),
-  );
+  const text = await chatCompletionText({
+    system: CLASSIFICATION_SYSTEM,
+    user: `TRANSCRIPT:\n"""${transcript}"""\n\nClassify and return JSON only.`,
+    temperature: 0.3,
+    model: MODEL_CLASSIFY,
+    jsonMode: true,
+  });
 
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
   try {
     const parsed = parseJson<ClassificationLlmResult>(text);
     if (!parsed.category || !Array.isArray(parsed.top3)) {
@@ -295,40 +343,29 @@ export async function generatePrompts(
     throw new Error("No documentation found for the selected tools.");
   }
 
-  const response = await withGeminiRetry(() =>
-    ai.models.generateContent({
-      model: MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text:
-                mode === "clean"
-                  ? `Clean up this transcript only. Tools for JSON: ${toolNames.join(", ")}
+  const user =
+    mode === "clean"
+      ? `Clean up this transcript only. Tools for JSON: ${toolNames.join(", ")}
 
 TRANSCRIPT:
 """${transcript}"""
 
 Return JSON only.`
-                  : `Generate optimized prompts for these tools ONLY: ${toolNames.join(", ")}
+      : `Generate optimized prompts for these tools ONLY: ${toolNames.join(", ")}
 
 TRANSCRIPT:
 """${transcript}"""
 
-Return JSON only.`,
-            },
-          ],
-        },
-      ],
-      config: {
-        systemInstruction: sys,
-        temperature: mode === "clean" ? 0.45 : 0.7,
-      },
-    }),
-  );
+Return JSON only.`;
 
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const text = await chatCompletionText({
+    system: sys,
+    user,
+    temperature: mode === "clean" ? 0.45 : 0.7,
+    model: MODEL_GENERATE,
+    jsonMode: true,
+  });
+
   try {
     const parsed = parseJson<{ tools: ToolPrompt[]; improvements_made: string[] }>(text);
     if (!Array.isArray(parsed.tools) || parsed.tools.length === 0) {
@@ -402,27 +439,14 @@ export async function generateSinglePrompt(
       ? singleSystemPromptClean(toolName)
       : singleSystemPromptEnhance(toolName, doc);
 
-  const response = await withGeminiRetry(() =>
-    ai.models.generateContent({
-      model: MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `TOOL: ${toolName}\n\nTRANSCRIPT:\n"""${transcript}"""\n\nReturn JSON only.`,
-            },
-          ],
-        },
-      ],
-      config: {
-        systemInstruction,
-        temperature: mode === "clean" ? 0.45 : 0.7,
-      },
-    }),
-  );
+  const text = await chatCompletionText({
+    system: systemInstruction,
+    user: `TOOL: ${toolName}\n\nTRANSCRIPT:\n"""${transcript}"""\n\nReturn JSON only.`,
+    temperature: mode === "clean" ? 0.45 : 0.7,
+    model: MODEL_GENERATE,
+    jsonMode: true,
+  });
 
-  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
   try {
     const parsed = parseJson<ToolPrompt>(text);
     if (!parsed.refined_prompt) throw new Error("Missing prompt");

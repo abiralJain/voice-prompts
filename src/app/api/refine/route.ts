@@ -2,8 +2,8 @@ import {
   classifyTranscript,
   generatePrompts,
   isRateLimitError,
-  userFacingGeminiError,
-} from "@/lib/gemini";
+  userFacingLlmError,
+} from "@/lib/groq";
 import {
   getCategoryTools,
   isValidCategory,
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     if (!toolsPayload) {
-      const message = lastError ? userFacingGeminiError(lastError) : "Prompt generation failed";
+      const message = lastError ? userFacingLlmError(lastError) : "Prompt generation failed";
       const status = lastError && isRateLimitError(lastError) ? 429 : 502;
       return NextResponse.json(
         {
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     return NextResponse.json(refineResponse);
   } catch (error: unknown) {
     console.error("Refine API error:", error);
-    const message = userFacingGeminiError(error);
+    const message = userFacingLlmError(error);
     const status = isRateLimitError(error) ? 429 : 500;
     return NextResponse.json({ error: message }, { status });
   }

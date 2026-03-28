@@ -1,4 +1,4 @@
-import { generateSinglePrompt, isRateLimitError, userFacingGeminiError } from "@/lib/gemini";
+import { generateSinglePrompt, isRateLimitError, userFacingLlmError } from "@/lib/groq";
 import { getCategoryForTool, getCategoryTools, isValidCategory } from "@/lib/toolDocs";
 import type { ToolPrompt } from "@/types";
 import { NextResponse } from "next/server";
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ tool });
   } catch (error: unknown) {
     console.error("Refine tool API error:", error);
-    const message = userFacingGeminiError(error);
+    const message = userFacingLlmError(error);
     const status = isRateLimitError(error) ? 429 : 500;
     return NextResponse.json({ error: message }, { status });
   }
