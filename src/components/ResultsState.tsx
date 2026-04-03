@@ -84,8 +84,8 @@ export default function ResultsState({
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl bg-[#ffffff] px-4 pb-10 pt-4 md:px-8 md:pb-16 md:pt-6">
-      <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[#ffffff] p-4 shadow-[var(--shadow-sm)]">
+    <div className="mx-auto w-full min-w-0 max-w-4xl bg-[var(--bg)] px-3 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-4 min-[400px]:px-4 md:px-8 md:pb-16 md:pt-6">
+      <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-3 shadow-[var(--shadow-sm)] min-[400px]:p-4">
         <button
           type="button"
           onClick={() => setOriginalOpen((o) => !o)}
@@ -103,7 +103,7 @@ export default function ResultsState({
                 <button
                   type="button"
                   onClick={toggleAppendMic}
-                  className="absolute right-3 top-3 z-10 rounded-lg border border-[var(--border)] bg-[#ffffff] p-2.5 text-sm shadow-[var(--shadow-sm)]"
+                  className="absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-sm shadow-[var(--shadow-sm)] min-[400px]:right-3 min-[400px]:top-3 min-[400px]:h-auto min-[400px]:w-auto min-[400px]:p-2.5"
                   aria-label="Append with voice"
                 >
                   {speech.isListening ? "■" : "🎤"}

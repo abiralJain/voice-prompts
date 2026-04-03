@@ -30,10 +30,10 @@ export default function HowItWorksSection() {
     <section
       id="how-it-works"
       ref={ref}
-      className={`reveal-on-scroll bg-[#ffffff] py-20 md:py-24 ${visible ? "is-visible" : ""}`}
+      className={`reveal-on-scroll bg-[var(--bg)] py-20 md:py-24 ${visible ? "is-visible" : ""}`}
     >
-      <div className="mx-auto max-w-6xl px-4 md:px-8">
-        <h2 className="mb-12 text-center font-[family-name:var(--font-heading)] text-3xl font-bold text-[var(--text-primary)] md:text-4xl">
+      <div className="mx-auto min-w-0 max-w-6xl px-3 min-[400px]:px-4 md:px-8">
+        <h2 className="mb-12 text-center font-[family-name:var(--font-heading)] text-3xl font-bold leading-[1.12] tracking-[-0.03em] text-[var(--text-primary)] md:text-4xl md:tracking-[-0.032em]">
           Three steps to better prompts
         </h2>
         <div className="relative grid gap-8 md:grid-cols-3">
@@ -63,10 +63,12 @@ export default function HowItWorksSection() {
                   {step.n}
                 </span>
               </div>
-              <h3 className="mb-2 font-[family-name:var(--font-heading)] text-xl font-semibold text-[var(--text-primary)]">
+              <h3 className="mb-2 font-[family-name:var(--font-heading)] text-xl font-semibold tracking-[-0.022em] text-[var(--text-primary)]">
                 {step.title}
               </h3>
-              <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{step.body}</p>
+              <p className="text-[0.9375rem] leading-[1.65] tracking-[-0.01em] text-[var(--text-secondary)]">
+                {step.body}
+              </p>
             </article>
           ))}
         </div>

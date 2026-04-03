@@ -23,13 +23,13 @@ export default function LandingState({ onStartSpeaking }: LandingStateProps) {
   const row = [...TRUST_TOOLS, ...TRUST_TOOLS];
 
   return (
-    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col bg-[#ffffff] px-4 pb-10 pt-8 md:pb-16 md:pt-12">
-      <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 md:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)] md:gap-14 lg:gap-16">
-        <div className="flex flex-col items-start text-left">
-          <h1 className="mb-5 font-[family-name:var(--font-heading)] text-[28px] font-extrabold leading-[1.1] tracking-tight text-[#1a1a1a] sm:text-[36px] md:text-5xl lg:text-[48px]">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col bg-[var(--bg)] px-3 pb-10 pt-6 min-[400px]:px-4 min-[400px]:pt-8 md:pb-16 md:pt-12">
+      <div className="mx-auto grid w-full min-w-0 max-w-6xl flex-1 items-center gap-10 min-[400px]:gap-12 md:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)] md:gap-14 lg:gap-16">
+        <div className="flex min-w-0 flex-col items-start text-left">
+          <h1 className="mb-4 min-[400px]:mb-5 font-[family-name:var(--font-heading)] text-[clamp(1.5625rem,6.5vw,1.8125rem)] font-extrabold leading-[1.06] tracking-[-0.038em] text-[var(--text-primary)] min-[400px]:text-[28px] sm:text-[36px] sm:tracking-[-0.04em] md:text-[2.75rem] md:leading-[1.05] lg:text-[3rem]">
             Your voice, perfected prompts.
           </h1>
-          <p className="mb-8 max-w-[480px] text-lg leading-relaxed text-[#6b6b6b]">
+          <p className="mb-6 max-w-[28rem] text-base font-medium leading-[1.7] tracking-[-0.015em] text-[var(--text-secondary)] min-[400px]:mb-8 min-[400px]:text-[1.0625rem]">
             Speak naturally into any AI tool. We transform your messy thoughts into clear, professional
             prompts — optimized for 50+ AI tools.
           </p>
@@ -48,21 +48,23 @@ export default function LandingState({ onStartSpeaking }: LandingStateProps) {
             </button>
           </div>
 
-          <p className="mb-8 text-sm text-[#9b9b9b]">Free to use • No sign up required</p>
+          <p className="mb-8 text-[0.8125rem] font-medium tracking-[-0.008em] text-[var(--text-tertiary)]">
+            Free to use • No sign up required
+          </p>
 
           <div
             id="tools"
-            className="w-full max-w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] p-4 shadow-[var(--shadow-sm)] sm:max-w-xl md:p-5"
+            className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] p-3 shadow-[var(--shadow-sm)] min-[400px]:p-4 sm:max-w-xl md:p-5"
           >
-            <p className="mb-3 text-[13px] font-semibold uppercase tracking-[0.12em] text-[#1a1a1a]">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-primary)] min-[400px]:text-[12px]">
               Optimized for{" "}
               <span className="rounded-md bg-[var(--accent-brand-light)] px-1.5 py-0.5 text-[var(--accent-brand)]">
                 50+
               </span>{" "}
               AI tools
             </p>
-            <div className="overflow-hidden">
-              <div className="flex w-max animate-[marquee_32s_linear_infinite] gap-2.5 hover:[animation-play-state:paused]">
+            <div className="min-w-0 overflow-hidden">
+              <div className="flex w-max max-w-none animate-[marquee_32s_linear_infinite] gap-2 hover:[animation-play-state:paused] min-[400px]:gap-2.5">
                 {row.map((name, i) => (
                   <span
                     key={`${name}-${i}`}
@@ -83,7 +85,7 @@ export default function LandingState({ onStartSpeaking }: LandingStateProps) {
         </div>
       </div>
 
-      <div className="mx-auto mt-12 w-full max-w-6xl border-t border-[var(--border)] bg-[#ffffff] pt-8">
+      <div className="mx-auto mt-10 w-full min-w-0 max-w-6xl border-t border-[var(--border)] bg-[var(--bg)] pt-6 min-[400px]:mt-12 min-[400px]:pt-8">
         <button
           type="button"
           onClick={() => document.getElementById("problem")?.scrollIntoView({ behavior: "smooth" })}

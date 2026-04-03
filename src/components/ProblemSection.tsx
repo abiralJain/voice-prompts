@@ -25,14 +25,14 @@ export default function ProblemSection() {
       ref={ref}
       className={`reveal-on-scroll bg-[var(--bg-secondary)] py-20 md:py-24 ${visible ? "is-visible" : ""}`}
     >
-      <div className="mx-auto max-w-6xl px-4 md:px-8">
-        <h2 className="mb-3 max-w-3xl font-[family-name:var(--font-heading)] text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
+      <div className="mx-auto min-w-0 max-w-6xl px-3 min-[400px]:px-4 md:px-8">
+        <h2 className="mb-3 max-w-3xl font-[family-name:var(--font-heading)] text-3xl font-bold leading-[1.1] tracking-[-0.03em] text-[var(--text-primary)] md:text-4xl md:tracking-[-0.032em]">
           You use AI every day.
         </h2>
-        <p className="mb-10 max-w-3xl text-2xl font-medium text-[var(--text-secondary)] md:text-3xl">
+        <p className="mb-10 max-w-3xl text-2xl font-semibold leading-snug tracking-[-0.025em] text-[var(--text-secondary)] md:text-3xl">
           Your prompts hold you back.
         </p>
-        <p className="mb-12 max-w-2xl text-[var(--text-secondary)]">
+        <p className="mb-12 max-w-2xl text-[1.0625rem] leading-[1.7] tracking-[-0.012em] text-[var(--text-secondary)]">
           Rambling voice notes and vague requests waste time. VoicePrompt turns what you mean into
           clear, tool-ready prompts.
         </p>

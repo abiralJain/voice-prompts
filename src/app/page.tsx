@@ -272,10 +272,10 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#ffffff]">
+    <div className="flex min-h-dvh flex-col bg-[var(--bg)]">
       <Navbar />
       {bannerError ? (
-        <div className="border-b border-[var(--error)]/40 bg-[var(--error)]/10 px-4 py-3 text-center text-sm text-[var(--error)]">
+        <div className="border-b border-[var(--error)]/40 bg-[var(--error)]/10 px-3 py-3 text-center text-sm text-[var(--error)] min-[400px]:px-4">
           {bannerError}
         </div>
       ) : null}

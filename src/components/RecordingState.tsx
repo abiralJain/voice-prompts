@@ -34,7 +34,7 @@ function ProcessingView() {
   }, []);
 
   return (
-    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-8 bg-[#ffffff] px-4 pb-12 pt-12 md:pb-24">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-8 bg-[var(--bg)] px-3 pb-12 pt-12 min-[400px]:px-4 md:pb-24">
       <OrbVisualizer volume={0} state="thinking" />
       <div className="min-h-[3rem] text-center">
         <p
@@ -115,9 +115,10 @@ export default function RecordingState({
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [recordedLabel, setRecordedLabel] = useState<string | null>(null);
-  const [shortHint, setShortHint] = useState(false);
 
   const showReviewUI = phase === "reviewing" || supported === false;
+  const showShortWarning =
+    showReviewUI && wordCount(transcript) > 0 && wordCount(transcript) < 10;
 
   useEffect(() => {
     if (processing) stopSpeech();
@@ -160,15 +161,12 @@ export default function RecordingState({
   const canRefine = wordCount(transcript) >= 10 && !processing;
 
   const toggleListening = () => {
-    setShortHint(false);
     if (speech.isListening) {
       speech.stop();
       window.setTimeout(() => {
         const merged = speech.getMergedTranscript();
         if (merged) onTranscriptChange(merged);
         setRecordedLabel(formatTime(elapsedSeconds));
-        const wc = wordCount(merged || transcriptRef.current);
-        if (wc > 0 && wc < 10) setShortHint(true);
         onEnterReview();
       }, 180);
     } else {
@@ -178,14 +176,11 @@ export default function RecordingState({
   };
 
   const goToReview = () => {
-    setShortHint(false);
     if (speech.isListening) speech.stop();
     window.setTimeout(() => {
       const merged = speech.getMergedTranscript();
       if (merged) onTranscriptChange(merged);
       setRecordedLabel(formatTime(elapsedSeconds));
-      const wc = wordCount(merged || transcript);
-      if (wc > 0 && wc < 10) setShortHint(true);
       onEnterReview();
     }, 150);
   };
@@ -197,7 +192,6 @@ export default function RecordingState({
     onTranscriptChange("");
     setElapsedSeconds(0);
     setRecordedLabel(null);
-    setShortHint(false);
     onClearRestart();
   };
 
@@ -218,7 +212,7 @@ export default function RecordingState({
 
   if (!showReviewUI) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-8 bg-[#ffffff] px-4 pb-16 pt-10">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[var(--bg)] px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-8 min-[400px]:gap-8 min-[400px]:px-4 min-[400px]:pb-16 min-[400px]:pt-10">
         <p className="font-[family-name:var(--font-mono)] text-sm text-[#9b9b9b]">{formatTime(elapsedSeconds)}</p>
 
         <OrbVisualizer volume={volume} state={orbState} />
@@ -228,7 +222,7 @@ export default function RecordingState({
             type="button"
             onClick={toggleListening}
             disabled={!supported}
-            className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold shadow-[var(--shadow-md)] transition disabled:opacity-40 ${
+            className={`flex h-[52px] w-[52px] min-[400px]:h-16 min-[400px]:w-16 items-center justify-center rounded-full text-xl font-bold shadow-[var(--shadow-md)] transition disabled:opacity-40 ${
               speech.isListening
                 ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
                 : "border-2 border-[var(--border)] bg-[var(--bg-interactive)] text-[#1a1a1a] hover:border-[var(--border-hover)]"
@@ -271,8 +265,8 @@ export default function RecordingState({
   }
 
   return (
-    <div className="animate-fade-in flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[#ffffff] px-4 pb-12 pt-8 md:pb-20">
-      <div className="w-full max-w-2xl space-y-4">
+    <div className="animate-fade-in flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[var(--bg)] px-3 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 min-[400px]:px-4 min-[400px]:pb-12 min-[400px]:pt-8 md:pb-20">
+      <div className="w-full min-w-0 max-w-2xl space-y-4">
         <div>
           <p className="text-xs text-[#9b9b9b]">Here&apos;s what we heard:</p>
           {recordedLabel ? (
@@ -288,10 +282,19 @@ export default function RecordingState({
           </p>
         ) : null}
 
-        <EditableTranscript value={transcript} onChange={onTranscriptChange} surface="paper" />
+        <EditableTranscript
+          value={transcript}
+          onChange={onTranscriptChange}
+          surface="paper"
+          emphasizeWarning={showShortWarning}
+        />
 
-        {shortHint ? (
-          <p className="text-center text-sm text-[#6b6b6b]">
+        {showShortWarning ? (
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-center text-sm font-medium text-[var(--warning)]"
+          >
             That seems a bit short. Add more detail for better results.
           </p>
         ) : null}
@@ -301,12 +304,16 @@ export default function RecordingState({
             type="button"
             disabled={!canRefine}
             onClick={onRefine}
-            className="btn-hero-cta w-full max-w-md py-4 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none"
+            className="btn-hero-cta min-h-12 w-full max-w-md py-3.5 min-[400px]:py-4 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none"
           >
             Refine Prompt →
           </button>
           {supported ? (
-            <button type="button" onClick={handleContinueSpeaking} className="btn-secondary mx-auto w-full max-w-md py-3">
+            <button
+              type="button"
+              onClick={handleContinueSpeaking}
+              className="btn-secondary mx-auto min-h-12 w-full max-w-md py-3"
+            >
               Continue speaking
             </button>
           ) : null}
