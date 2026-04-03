@@ -27,7 +27,8 @@ interface HeroSectionProps {
   loadingToolName: string | null;
   toolGenerationError: string | null;
   promptMode: PromptMode;
-  onPromptModeChange: (mode: PromptMode) => void;
+  onPromptModeChange: (mode: PromptMode) => void | Promise<void>;
+  isReRefining: boolean;
   resultsRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -53,6 +54,7 @@ export default function HeroSection({
   toolGenerationError,
   promptMode,
   onPromptModeChange,
+  isReRefining,
   resultsRef,
 }: HeroSectionProps) {
   const inCaptureFlow =
@@ -99,6 +101,7 @@ export default function HeroSection({
             toolGenerationError={toolGenerationError}
             promptMode={promptMode}
             onPromptModeChange={onPromptModeChange}
+            isReRefining={isReRefining}
           />
         </div>
       ) : null}

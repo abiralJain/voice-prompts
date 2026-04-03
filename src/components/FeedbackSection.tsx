@@ -26,7 +26,7 @@ export default function FeedbackSection({ onTryAnother, onReRefineWithFeedback }
   };
 
   return (
-    <section className="mt-14 rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] p-8 shadow-[var(--shadow-sm)]">
+    <section className="mt-14 rounded-2xl border border-[var(--border)] bg-[var(--bg-secondary)] p-5 shadow-[var(--shadow-sm)] md:p-8">
       <h3 className="mb-6 text-center font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--text-primary)]">
         How did we do?
       </h3>
@@ -77,7 +77,7 @@ export default function FeedbackSection({ onTryAnother, onReRefineWithFeedback }
             type="button"
             disabled={!feedback.trim() || busy}
             onClick={handleReRefine}
-            className="btn-primary px-6 py-2.5 text-sm disabled:opacity-40"
+            className="btn-primary w-full px-6 py-2.5 text-sm disabled:opacity-40 sm:w-auto"
           >
             {busy ? "Re-refining…" : "Re-refine with feedback"}
           </button>

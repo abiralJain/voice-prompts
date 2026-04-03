@@ -25,6 +25,7 @@ export default function HomePage() {
   const [loadingToolName, setLoadingToolName] = useState<string | null>(null);
   const [toolGenerationError, setToolGenerationError] = useState<string | null>(null);
   const [promptMode, setPromptMode] = useState<PromptMode>("enhance");
+  const [isReRefining, setIsReRefining] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -141,6 +142,7 @@ export default function HomePage() {
         ? `${base}\n\n--- User feedback ---\n${feedback.trim()}`
         : base;
       setBannerError(null);
+      setIsReRefining(true);
       try {
         await runRefine(payload, promptMode);
         requestAnimationFrame(() => {
@@ -149,9 +151,31 @@ export default function HomePage() {
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Something went wrong";
         setBannerError(message);
+      } finally {
+        setIsReRefining(false);
       }
     },
     [runRefine, transcript, promptMode],
+  );
+
+  const handlePromptModeChange = useCallback(
+    async (newMode: PromptMode) => {
+      if (newMode === promptMode) return;
+      setPromptMode(newMode);
+      const text = transcript.trim();
+      if (!text || wordCount(text) < 5 || !results) return;
+      setBannerError(null);
+      setIsReRefining(true);
+      try {
+        await runRefine(text, newMode);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : "Something went wrong";
+        setBannerError(message);
+      } finally {
+        setIsReRefining(false);
+      }
+    },
+    [promptMode, transcript, results, runRefine],
   );
 
   const handleTryAnother = useCallback(() => {
@@ -277,7 +301,8 @@ export default function HomePage() {
         loadingToolName={loadingToolName}
         toolGenerationError={toolGenerationError}
         promptMode={promptMode}
-        onPromptModeChange={setPromptMode}
+        onPromptModeChange={handlePromptModeChange}
+        isReRefining={isReRefining}
         resultsRef={resultsRef}
       />
 

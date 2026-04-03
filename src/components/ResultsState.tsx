@@ -19,7 +19,8 @@ interface ResultsStateProps {
   loadingToolName: string | null;
   toolGenerationError: string | null;
   promptMode: PromptMode;
-  onPromptModeChange: (mode: PromptMode) => void;
+  onPromptModeChange: (mode: PromptMode) => void | Promise<void>;
+  isReRefining: boolean;
 }
 
 export default function ResultsState({
@@ -35,6 +36,7 @@ export default function ResultsState({
   toolGenerationError,
   promptMode,
   onPromptModeChange,
+  isReRefining,
 }: ResultsStateProps) {
   const supported = useSpeechSupported();
   const speech = useSpeechRecognition({
@@ -82,7 +84,7 @@ export default function ResultsState({
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl bg-[#ffffff] px-4 pb-16 pt-6 md:px-8">
+    <div className="mx-auto w-full max-w-4xl bg-[#ffffff] px-4 pb-10 pt-4 md:px-8 md:pb-16 md:pt-6">
       <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[#ffffff] p-4 shadow-[var(--shadow-sm)]">
         <button
           type="button"
@@ -101,7 +103,7 @@ export default function ResultsState({
                 <button
                   type="button"
                   onClick={toggleAppendMic}
-                  className="absolute right-3 top-3 z-10 rounded-lg border border-[var(--border)] bg-[#ffffff] p-2 text-sm shadow-[var(--shadow-sm)]"
+                  className="absolute right-3 top-3 z-10 rounded-lg border border-[var(--border)] bg-[#ffffff] p-2.5 text-sm shadow-[var(--shadow-sm)]"
                   aria-label="Append with voice"
                 >
                   {speech.isListening ? "■" : "🎤"}
@@ -117,11 +119,11 @@ export default function ResultsState({
             {speech.error ? <p className="text-sm text-[var(--error)]">{speech.error}</p> : null}
             <button
               type="button"
-              disabled={!transcriptChanged || speech.isListening}
+              disabled={!transcriptChanged || speech.isListening || isReRefining}
               onClick={() => void onReRefine()}
               className="btn-secondary text-sm disabled:opacity-40"
             >
-              Re-refine
+              {isReRefining ? "Re-refining…" : "Re-refine"}
             </button>
           </div>
         ) : null}
@@ -139,7 +141,7 @@ export default function ResultsState({
               key={`${t.tool_name}-${index}`}
               type="button"
               onClick={() => onActiveToolChange(index)}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition md:px-4 md:py-2.5 ${
                 active
                   ? "bg-[#1a1a1a] text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
                   : "border border-[var(--border)] bg-[#ffffff] text-[#1a1a1a] hover:border-[var(--border-hover)]"
@@ -156,7 +158,7 @@ export default function ResultsState({
           <button
             type="button"
             onClick={() => setMoreToolsOpen((o) => !o)}
-            className={`shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
+            className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition md:px-4 md:py-2.5 ${
               moreToolsOpen
                 ? "border-[#1a1a1a] bg-[var(--bg-secondary)] text-[#1a1a1a]"
                 : "border-[var(--border)] bg-[var(--bg-interactive)] text-[#6b6b6b] hover:border-[var(--border-hover)]"
@@ -181,7 +183,7 @@ export default function ResultsState({
                 type="button"
                 disabled={loading}
                 onClick={() => void onGenerateToolPrompt(t.name)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[#ffffff] px-3 py-1.5 text-xs font-medium text-[#6b6b6b] hover:border-[var(--border-hover)] hover:text-[#1a1a1a] disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[#ffffff] px-3.5 py-2 text-sm font-medium text-[#6b6b6b] hover:border-[var(--border-hover)] hover:text-[#1a1a1a] disabled:opacity-60 md:px-3 md:py-1.5 md:text-xs"
                 title={t.best_for}
               >
                 {loading ? (
@@ -197,16 +199,17 @@ export default function ResultsState({
 
       {activeTool ? (
         <div className="crossfade-enter space-y-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
             <div
               role="group"
-              aria-label="Refinement mode for next re-refine"
-              className="inline-flex rounded-full border border-[var(--border)] bg-[var(--bg-interactive)] p-0.5 text-xs"
+              aria-label="Refinement mode"
+              className={`inline-flex rounded-full border border-[var(--border)] bg-[var(--bg-interactive)] p-0.5 text-xs ${isReRefining ? "pointer-events-none opacity-60" : ""}`}
             >
               <button
                 type="button"
-                onClick={() => onPromptModeChange("enhance")}
-                className={`rounded-full px-3 py-1.5 font-medium ${
+                disabled={isReRefining}
+                onClick={() => void onPromptModeChange("enhance")}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition md:px-3 md:py-1.5 md:text-xs ${
                   promptMode === "enhance"
                     ? "bg-[#ffffff] text-[#1a1a1a] shadow-[var(--shadow-sm)]"
                     : "text-[#9b9b9b]"
@@ -216,8 +219,9 @@ export default function ResultsState({
               </button>
               <button
                 type="button"
-                onClick={() => onPromptModeChange("clean")}
-                className={`rounded-full px-3 py-1.5 font-medium ${
+                disabled={isReRefining}
+                onClick={() => void onPromptModeChange("clean")}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition md:px-3 md:py-1.5 md:text-xs ${
                   promptMode === "clean"
                     ? "bg-[#ffffff] text-[#1a1a1a] shadow-[var(--shadow-sm)]"
                     : "text-[#9b9b9b]"
@@ -226,10 +230,20 @@ export default function ResultsState({
                 Clean only
               </button>
             </div>
-            <p className="text-[11px] text-[#9b9b9b] sm:text-right">Switch mode, then Re-refine.</p>
           </div>
 
-          <div className="relative rounded-2xl border border-[var(--border)] bg-[#ffffff] p-8 shadow-[var(--shadow-card)] md:p-10">
+          <div
+            key={`${activeTool.tool_name}-${activeToolIndex}`}
+            className="crossfade-enter relative rounded-2xl border border-[var(--border)] bg-[#ffffff] p-5 shadow-[var(--shadow-card)] md:p-8"
+          >
+            {isReRefining ? (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/80">
+                <div className="flex items-center gap-3">
+                  <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-[#1a1a1a] border-t-transparent" />
+                  <span className="text-sm font-medium text-[#6b6b6b]">Regenerating…</span>
+                </div>
+              </div>
+            ) : null}
             <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
               <span className="rounded-full border border-[var(--border)] bg-[var(--bg-interactive)] px-3 py-1 text-xs font-medium text-[#6b6b6b]">
                 {modePill}
@@ -241,11 +255,17 @@ export default function ResultsState({
             </p>
           </div>
 
+          {results.prompt_mode === "clean" && tools.length > 1 ? (
+            <p className="text-center text-xs text-[#9b9b9b]">
+              Same cleaned prompt for all tools — switch to Enhance for tool-specific prompts.
+            </p>
+          ) : null}
+
           <div className="flex flex-col gap-2 text-sm">
             <button
               type="button"
               onClick={() => setWhyOpen((o) => !o)}
-              className="text-left text-[#6b6b6b] hover:text-[#1a1a1a]"
+              className="py-2 text-left text-[#6b6b6b] hover:text-[#1a1a1a]"
             >
               Why {activeTool.tool_name}? {whyOpen ? "‹" : "›"}
             </button>
@@ -255,7 +275,7 @@ export default function ResultsState({
             <button
               type="button"
               onClick={() => setImproveOpen((o) => !o)}
-              className="text-left text-[#6b6b6b] hover:text-[#1a1a1a]"
+              className="py-2 text-left text-[#6b6b6b] hover:text-[#1a1a1a]"
             >
               What we improved {improveOpen ? "‹" : "›"}
             </button>

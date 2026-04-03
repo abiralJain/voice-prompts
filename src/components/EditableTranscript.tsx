@@ -30,7 +30,7 @@ export default function EditableTranscript({
         disabled={disabled}
         placeholder={placeholder}
         rows={6}
-        className="min-h-[160px] w-full resize-y rounded-xl bg-transparent px-4 py-3 text-sm leading-relaxed text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:ring-2 focus:ring-[var(--accent-brand)]/25 disabled:opacity-60 md:text-base"
+        className="min-h-[120px] w-full resize-y rounded-xl bg-transparent px-4 py-3 text-sm leading-relaxed text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:ring-2 focus:ring-[var(--accent-brand)]/25 disabled:opacity-60 md:min-h-[160px] md:text-base"
       />
     </div>
   );

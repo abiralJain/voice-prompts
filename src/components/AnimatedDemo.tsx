@@ -68,7 +68,7 @@ export default function AnimatedDemo() {
       </div>
 
       <div className="p-5 md:p-6">
-        <div className="relative min-h-[200px] md:min-h-[220px]">
+        <div className="relative min-h-[160px] md:min-h-[220px]">
           {(phase === "typing" || phase === "pause-messy") && (
             <div
               className={`transition duration-500 ${

@@ -34,7 +34,7 @@ function ProcessingView() {
   }, []);
 
   return (
-    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-8 bg-[#ffffff] px-4 pb-24 pt-12">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-8 bg-[#ffffff] px-4 pb-12 pt-12 md:pb-24">
       <OrbVisualizer volume={0} state="thinking" />
       <div className="min-h-[3rem] text-center">
         <p
@@ -271,7 +271,7 @@ export default function RecordingState({
   }
 
   return (
-    <div className="animate-fade-in flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[#ffffff] px-4 pb-20 pt-8">
+    <div className="animate-fade-in flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[#ffffff] px-4 pb-12 pt-8 md:pb-20">
       <div className="w-full max-w-2xl space-y-4">
         <div>
           <p className="text-xs text-[#9b9b9b]">Here&apos;s what we heard:</p>
