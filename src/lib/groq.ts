@@ -2,6 +2,7 @@ import OpenAI, { APIError } from "openai";
 import {
   CATEGORY_LABELS,
   getCategoryDocs,
+  getCategoryTools,
   getClassificationToolList,
   type CategoryKey,
 } from "@/lib/toolDocs";
@@ -16,10 +17,14 @@ const MODEL_GENERATE = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
 /** Speech-to-text model used when browser speech recognition is unavailable. */
 const MODEL_TRANSCRIBE = process.env.GROQ_MODEL_TRANSCRIBE ?? "whisper-large-v3-turbo";
 
+function getGroqApiKey(): string | undefined {
+  return process.env.GROQ_API_KEY?.trim() || process.env.GROK_API_KEY?.trim();
+}
+
 function getClient(): OpenAI {
-  const key = process.env.GROQ_API_KEY;
-  if (!key?.trim()) {
-    throw new Error("GROQ_API_KEY is not set. Add it to .env.local.");
+  const key = getGroqApiKey();
+  if (!key) {
+    throw new Error("GROQ_API_KEY is not set. Add it to Vercel environment variables.");
   }
   return new OpenAI({
     apiKey: key,
@@ -80,10 +85,88 @@ export function userFacingLlmError(err: unknown): string {
   if (isRateLimitError(err)) {
     return "The AI service is busy (rate limit). Wait a moment and try again.";
   }
-  if (/GROQ_API_KEY|api key/i.test(raw)) {
-    return "Server configuration error: missing or invalid GROQ_API_KEY.";
+  if (/GROQ_API_KEY|GROK_API_KEY|api key|unauthorized|invalid_api_key/i.test(raw)) {
+    return "AI service configuration is missing or invalid.";
   }
   return raw.length > 200 ? "Something went wrong with the AI request. Please try again." : raw;
+}
+
+function cleanTranscript(transcript: string): string {
+  return transcript
+    .replace(/\b(um+|uh+|like|you know|basically|actually)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function inferFallbackCategory(transcript: string): CategoryKey {
+  const text = transcript.toLowerCase();
+  const checks: Array<[CategoryKey, RegExp]> = [
+    ["coding", /\b(app|website|dashboard|react|next|code|api|database|bug|component|login|form)\b/],
+    ["image_generation", /\b(image|picture|photo|logo|illustration|poster|art)\b/],
+    ["video_generation", /\b(video|reel|animation|cinematic|shot|clip)\b/],
+    ["audio_music", /\b(song|music|beat|voiceover|podcast|sound|audio)\b/],
+    ["research", /\b(research|find|compare|explain|what is|why|analysis)\b/],
+    ["design_visual", /\b(figma|design|slide|presentation|wireframe|infographic|layout)\b/],
+    ["writing_content", /\b(email|blog|caption|copy|post|write|essay|script)\b/],
+  ];
+
+  return checks.find(([, pattern]) => pattern.test(text))?.[0] ?? "general_chat";
+}
+
+function fallbackClassifyTranscript(transcript: string): ClassificationLlmResult {
+  const category = inferFallbackCategory(transcript);
+  const tools = getCategoryTools(category).slice(0, 3).map((tool) => tool.name);
+  return {
+    category,
+    category_label: CATEGORY_LABELS[category],
+    top3: tools,
+  };
+}
+
+function fallbackPromptForTool(transcript: string, toolName: string, mode: PromptMode): ToolPrompt {
+  const cleaned = cleanTranscript(transcript);
+  const refined =
+    mode === "clean"
+      ? cleaned
+      : `${cleaned}. Turn this into a clear, specific result. Keep the scope focused on the original request, include the important context, and make the output polished enough to use directly.`;
+
+  return {
+    tool_name: toolName,
+    tool_icon: "✨",
+    best_for: "Reliable fallback prompt when the AI service is unavailable.",
+    is_free: true,
+    refined_prompt: refined,
+    prompt_explanation:
+      mode === "clean"
+        ? "Cleaned locally because the AI service is not configured."
+        : "Enhanced locally because the AI service is not configured.",
+  };
+}
+
+function fallbackGeneratePrompts(
+  transcript: string,
+  category: string,
+  toolNames: string[],
+  mode: PromptMode,
+): { tools: ToolPrompt[]; improvements_made: string[] } {
+  const tools = toolNames.map((name) => {
+    const meta = getCategoryTools(category).find((tool) => tool.name === name);
+    return {
+      ...fallbackPromptForTool(transcript, name, mode),
+      tool_icon: meta?.icon ?? "✨",
+      best_for: meta?.best_for ?? "Reliable fallback prompt when the AI service is unavailable.",
+      is_free: meta?.is_free ?? true,
+    };
+  });
+
+  return {
+    tools,
+    improvements_made:
+      mode === "clean"
+        ? ["Removed filler words locally", "Kept the original meaning intact"]
+        : ["Clarified the request locally", "Kept the prompt focused on the original intent"],
+  };
 }
 
 export async function transcribeAudio(file: File): Promise<string> {
@@ -245,23 +328,22 @@ ${getClassificationToolList()}
 }`;
 
 export async function classifyTranscript(transcript: string): Promise<ClassificationLlmResult> {
-  const text = await chatCompletionText({
-    system: CLASSIFICATION_SYSTEM,
-    user: `TRANSCRIPT:\n"""${transcript}"""\n\nClassify and return JSON only.`,
-    temperature: 0.3,
-    model: MODEL_CLASSIFY,
-    jsonMode: true,
-  });
-
   try {
+    const text = await chatCompletionText({
+      system: CLASSIFICATION_SYSTEM,
+      user: `TRANSCRIPT:\n"""${transcript}"""\n\nClassify and return JSON only.`,
+      temperature: 0.3,
+      model: MODEL_CLASSIFY,
+      jsonMode: true,
+    });
     const parsed = parseJson<ClassificationLlmResult>(text);
     if (!parsed.category || !Array.isArray(parsed.top3)) {
       throw new Error("Invalid classification shape");
     }
     return parsed;
-  } catch {
-    console.error("Classification parse error:", text);
-    throw new Error("Failed to classify transcript. Please try again.");
+  } catch (error) {
+    console.warn("Using local classification fallback:", error);
+    return fallbackClassifyTranscript(transcript);
   }
 }
 
@@ -344,39 +426,38 @@ export async function generatePrompts(
   toolNames: string[],
   mode: PromptMode,
 ): Promise<{ tools: ToolPrompt[]; improvements_made: string[] }> {
-  const sys =
-    mode === "clean"
-      ? generationSystemPromptClean(category, toolNames)
-      : generationSystemPromptEnhance(category, getCategoryDocs(category, toolNames));
+  try {
+    const sys =
+      mode === "clean"
+        ? generationSystemPromptClean(category, toolNames)
+        : generationSystemPromptEnhance(category, getCategoryDocs(category, toolNames));
 
-  if (mode === "enhance" && !getCategoryDocs(category, toolNames).trim()) {
-    throw new Error("No documentation found for the selected tools.");
-  }
+    if (mode === "enhance" && !getCategoryDocs(category, toolNames).trim()) {
+      throw new Error("No documentation found for the selected tools.");
+    }
 
-  const user =
-    mode === "clean"
-      ? `Clean up this transcript only. Tools for JSON: ${toolNames.join(", ")}
+    const user =
+      mode === "clean"
+        ? `Clean up this transcript only. Tools for JSON: ${toolNames.join(", ")}
 
 TRANSCRIPT:
 """${transcript}"""
 
 Return JSON only.`
-      : `Generate optimized prompts for these tools ONLY: ${toolNames.join(", ")}
+        : `Generate optimized prompts for these tools ONLY: ${toolNames.join(", ")}
 
 TRANSCRIPT:
 """${transcript}"""
 
 Return JSON only.`;
 
-  const text = await chatCompletionText({
-    system: sys,
-    user,
-    temperature: mode === "clean" ? 0.45 : 0.7,
-    model: MODEL_GENERATE,
-    jsonMode: true,
-  });
-
-  try {
+    const text = await chatCompletionText({
+      system: sys,
+      user,
+      temperature: mode === "clean" ? 0.45 : 0.7,
+      model: MODEL_GENERATE,
+      jsonMode: true,
+    });
     const parsed = parseJson<{ tools: ToolPrompt[]; improvements_made: string[] }>(text);
     if (!Array.isArray(parsed.tools) || parsed.tools.length === 0) {
       throw new Error("No tools in response");
@@ -385,9 +466,9 @@ Return JSON only.`;
       tools: parsed.tools,
       improvements_made: parsed.improvements_made ?? [],
     };
-  } catch {
-    console.error("Generate prompts parse error:", text);
-    throw new Error("Failed to generate prompts. Please try again.");
+  } catch (error) {
+    console.warn("Using local prompt fallback:", error);
+    return fallbackGeneratePrompts(transcript, category, toolNames, mode);
   }
 }
 
@@ -439,30 +520,35 @@ export async function generateSinglePrompt(
   toolName: string,
   mode: PromptMode,
 ): Promise<ToolPrompt> {
-  const doc = getCategoryDocs(category, [toolName]);
-  if (mode === "enhance" && !doc.trim()) {
-    throw new Error(`Unknown tool: ${toolName}`);
-  }
-
-  const systemInstruction =
-    mode === "clean"
-      ? singleSystemPromptClean(toolName)
-      : singleSystemPromptEnhance(toolName, doc);
-
-  const text = await chatCompletionText({
-    system: systemInstruction,
-    user: `TOOL: ${toolName}\n\nTRANSCRIPT:\n"""${transcript}"""\n\nReturn JSON only.`,
-    temperature: mode === "clean" ? 0.45 : 0.7,
-    model: MODEL_GENERATE,
-    jsonMode: true,
-  });
-
   try {
+    const doc = getCategoryDocs(category, [toolName]);
+    if (mode === "enhance" && !doc.trim()) {
+      throw new Error(`Unknown tool: ${toolName}`);
+    }
+
+    const systemInstruction =
+      mode === "clean"
+        ? singleSystemPromptClean(toolName)
+        : singleSystemPromptEnhance(toolName, doc);
+
+    const text = await chatCompletionText({
+      system: systemInstruction,
+      user: `TOOL: ${toolName}\n\nTRANSCRIPT:\n"""${transcript}"""\n\nReturn JSON only.`,
+      temperature: mode === "clean" ? 0.45 : 0.7,
+      model: MODEL_GENERATE,
+      jsonMode: true,
+    });
     const parsed = parseJson<ToolPrompt>(text);
     if (!parsed.refined_prompt) throw new Error("Missing prompt");
     return parsed;
-  } catch {
-    console.error("Single prompt parse error:", text);
-    throw new Error("Failed to generate prompt for this tool. Please try again.");
+  } catch (error) {
+    console.warn("Using local single-prompt fallback:", error);
+    const meta = getCategoryTools(category).find((tool) => tool.name === toolName);
+    return {
+      ...fallbackPromptForTool(transcript, toolName, mode),
+      tool_icon: meta?.icon ?? "✨",
+      best_for: meta?.best_for ?? "Reliable fallback prompt when the AI service is unavailable.",
+      is_free: meta?.is_free ?? true,
+    };
   }
 }
