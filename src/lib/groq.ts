@@ -13,6 +13,8 @@ const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const MODEL_CLASSIFY = process.env.GROQ_MODEL_CLASSIFY ?? "llama-3.1-8b-instant";
 /** Default model for prompt generation */
 const MODEL_GENERATE = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile";
+/** Speech-to-text model used when browser speech recognition is unavailable. */
+const MODEL_TRANSCRIBE = process.env.GROQ_MODEL_TRANSCRIBE ?? "whisper-large-v3-turbo";
 
 function getClient(): OpenAI {
   const key = process.env.GROQ_API_KEY;
@@ -82,6 +84,14 @@ export function userFacingLlmError(err: unknown): string {
     return "Server configuration error: missing or invalid GROQ_API_KEY.";
   }
   return raw.length > 200 ? "Something went wrong with the AI request. Please try again." : raw;
+}
+
+export async function transcribeAudio(file: File): Promise<string> {
+  const res = await getClient().audio.transcriptions.create({
+    file,
+    model: MODEL_TRANSCRIBE,
+  });
+  return res.text.trim();
 }
 
 function stripJsonFence(text: string): string {

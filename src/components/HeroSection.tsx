@@ -14,7 +14,7 @@ interface HeroSectionProps {
   activeToolIndex: number;
   onActiveToolChange: (index: number) => void;
   audioStream: MediaStream | null;
-  ensureMic: () => Promise<void>;
+  ensureMic: () => Promise<MediaStream | null>;
   stopMic: () => void;
   onStartSpeaking: () => void;
   onEnterReview: () => void;

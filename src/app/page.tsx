@@ -31,15 +31,17 @@ export default function HomePage() {
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const promptCacheRef = useRef<Map<string, ToolPrompt>>(new Map());
 
-  const ensureMic = useCallback(async () => {
-    if (streamRef.current) return;
+  const ensureMic = useCallback(async (): Promise<MediaStream | null> => {
+    if (streamRef.current) return streamRef.current;
     try {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = s;
       setAudioStream(s);
+      return s;
     } catch {
       setBannerError("Microphone unavailable — you can still type your transcript.");
       window.setTimeout(() => setBannerError(null), 4000);
+      return null;
     }
   }, []);
 

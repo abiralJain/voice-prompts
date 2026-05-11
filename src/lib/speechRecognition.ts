@@ -117,6 +117,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
   const [interimText, setInterimText] = useState("");
   const interimRef = useRef("");
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<SpeechRecognitionErrorCode | null>(null);
 
   useEffect(() => {
     const recognition = createSpeechRecognition();
@@ -156,6 +157,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
 
     recognition.onerror = (event) => {
       if (event.error === "aborted" && isStoppingRef.current) return;
+      setErrorCode(event.error);
       setError(ERROR_MESSAGES[event.error] ?? "Voice recognition failed.");
       setIsListening(false);
       isStoppingRef.current = false;
@@ -184,6 +186,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     const trimmed = appendAfter?.trim();
     prefixRef.current = trimmed ? `${trimmed} ` : "";
     setError(null);
+    setErrorCode(null);
     setSessionFinals("");
     sessionFinalsRef.current = "";
     interimRef.current = "";
@@ -194,6 +197,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       setIsListening(true);
     } catch {
       setError("Could not start microphone. Check permissions and try again.");
+      setErrorCode(null);
       setIsListening(false);
     }
   }, []);
@@ -211,6 +215,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     interimRef.current = "";
     setInterimText("");
     setError(null);
+    setErrorCode(null);
     prefixRef.current = "";
   }, []);
 
@@ -227,6 +232,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     interimText,
     getMergedTranscript,
     error,
+    errorCode,
     start,
     stop,
     reset,
