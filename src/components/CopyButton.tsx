@@ -30,10 +30,21 @@ export default function CopyButton({ text, className = "", label = "Copy" }: Cop
       type="button"
       onClick={handleCopy}
       disabled={!text.trim()}
-      className={`rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-[var(--border-hover)] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.12em] shadow-[var(--shadow-sm)] disabled:cursor-not-allowed disabled:opacity-40 ${
+        copied
+          ? "border-[var(--success)]/30 bg-[var(--success)]/10 text-[var(--success)]"
+          : failed
+            ? "border-[var(--error)]/30 bg-[var(--error)]/10 text-[var(--error)]"
+            : "border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:border-[var(--border-hover)]"
+      } ${className}`}
       aria-label="Copy to clipboard"
     >
-      {failed ? "Failed" : copied ? "Copied ✓" : label}
+      {copied ? (
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" aria-hidden>
+          <path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : null}
+      {failed ? "Failed" : copied ? "Copied" : label}
     </button>
   );
 }

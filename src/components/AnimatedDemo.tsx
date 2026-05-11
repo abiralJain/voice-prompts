@@ -3,16 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 
 const MESSY =
-  'umm so I want to like build a landing page for my coffee shop with warm colors and maybe some animations and like a menu section...';
+  "umm I need a product page for my app, it records voice and makes prompts, like make it feel premium but simple and maybe show the flow...";
 
 const CLEAN =
-  "Create a modern landing page for an artisan coffee shop. Use a warm color palette (cream, terracotta, dark brown). Include: hero section with full-bleed image, animated menu section with hover effects, about story section with parallax scrolling, Instagram feed integration, and a footer with location map. Mobile-first, responsive design. Style: organic, premium, handcrafted feel.";
+  "Design and build a premium responsive landing page for a voice-to-prompt AI app. Show the flow: record voice, review transcript, refine for the best AI tool, copy the final prompt. Use a polished product aesthetic, clear mobile layout, accessible controls, and subtle micro-interactions.";
+const START_TEXT = "I need";
 
 type Phase = "typing" | "pause-messy" | "morph" | "show-clean" | "pause-loop";
 
 export default function AnimatedDemo() {
   const [phase, setPhase] = useState<Phase>("typing");
-  const [typed, setTyped] = useState("");
+  const [typed, setTyped] = useState(START_TEXT);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -27,10 +28,10 @@ export default function AnimatedDemo() {
 
     const runLoop = () => {
       clear();
-      setTyped("");
+      setTyped(START_TEXT);
       setPhase("typing");
 
-      let i = 0;
+      let i = START_TEXT.length;
       const typeNext = () => {
         if (i >= MESSY.length) {
           setPhase("pause-messy");
@@ -55,57 +56,86 @@ export default function AnimatedDemo() {
 
   return (
     <div
-      className="pointer-events-none mx-auto w-full max-w-[28rem] cursor-default select-none overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--bg-hero-demo)] shadow-[var(--shadow-card)]"
+      className="pointer-events-none mx-auto w-full max-w-[31rem] cursor-default select-none overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--bg-hero-demo)] text-[var(--text-on-dark)] shadow-[var(--shadow-lg)]"
       aria-hidden
     >
-      <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-elevated)]/80 px-3 py-2.5 text-xs font-medium text-[var(--text-secondary)] backdrop-blur-sm">
-        <span className="flex gap-1.5" aria-hidden>
-          <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
-          <span className="h-2 w-2 rounded-full bg-[#febc2e]" />
-          <span className="h-2 w-2 rounded-full bg-[#28c840]" />
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-xs font-semibold text-white/60">
+        <span className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-white" fill="none">
+              <path d="M12 5v14M7 10v4M17 8v8M4 12v1M20 11v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </span>
+          VoicePrompt Studio
         </span>
-        <span className="ml-0.5 text-[var(--text-primary)]">✨ VoicePrompt Demo</span>
+        <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em]">
+          live
+        </span>
       </div>
 
-      <div className="p-5 md:p-6">
-        <div className="relative min-h-[160px] md:min-h-[220px]">
+      <div className="relative p-5 md:p-6">
+        <div className="mb-5 grid grid-cols-3 gap-2">
+          {["Record", "Refine", "Copy"].map((label, index) => (
+            <div key={label} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+              <p className="text-[10px] font-semibold text-white/32">0{index + 1}</p>
+              <p className="text-xs font-semibold text-white/76">{label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="relative min-h-[190px]">
           {(phase === "typing" || phase === "pause-messy") && (
             <div
-              className={`transition duration-500 ${
+              className={`rounded-2xl border border-white/10 bg-white/[0.05] p-4 transition duration-500 ${
                 phase === "pause-messy" ? "opacity-90" : "opacity-100"
               }`}
             >
-              <p className="mb-2 text-xs text-[var(--text-tertiary)]">Before</p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/38">Raw voice</p>
+                <div className="flex h-7 items-end gap-1 rounded-full bg-black/20 px-2 py-1.5">
+                  {[0, 1, 2, 3].map((bar) => (
+                    <span
+                      key={bar}
+                      className="h-3 w-1 rounded-full bg-white/70"
+                      style={{ animation: `meter ${620 + bar * 90}ms ease-in-out infinite` }}
+                    />
+                  ))}
+                </div>
+              </div>
               <p
-                className="font-[family-name:var(--font-mono)] text-sm leading-relaxed text-[var(--text-secondary)] md:text-base"
+                className="text-sm font-medium leading-relaxed text-white/66 md:text-[15px]"
                 style={{ fontStyle: "italic" }}
               >
                 {typed}
-                <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-[var(--accent-brand)] align-middle" />
+                <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-white align-middle" />
               </p>
             </div>
           )}
 
           {(phase === "morph" || phase === "show-clean" || phase === "pause-loop") && (
             <div className="crossfade-enter">
-              <p className="mb-2 text-xs font-medium text-[var(--success)]">After</p>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white/78">
+                <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+                Tool-ready prompt
+              </div>
               <p
-                className={`font-[family-name:var(--font-mono)] text-sm leading-relaxed text-[var(--text-primary)] transition md:text-base ${
+                className={`rounded-2xl border border-white/10 bg-[#f8f6ee] p-4 text-sm font-medium leading-relaxed text-[#111111] shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition md:text-[15px] ${
                   phase === "morph" ? "blur-sm opacity-40" : "blur-0 opacity-100"
                 }`}
               >
                 {CLEAN}
               </p>
               <div
-                className={`mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-medium transition ${
+                className={`mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold transition ${
                   phase === "show-clean" || phase === "pause-loop"
                     ? "translate-y-0 opacity-100"
                     : "translate-y-2 opacity-0"
                 }`}
               >
-                <span>▲</span>
-                <span className="text-[var(--text-tertiary)]">Best for</span>
-                <span className="font-semibold text-[var(--accent-brand)]">v0 by Vercel</span>
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-white" fill="none">
+                  <path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="text-white/48">Best match</span>
+                <span className="text-white">Cursor</span>
               </div>
             </div>
           )}

@@ -20,22 +20,22 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "VoicePrompt — Your voice, perfected prompts",
+  title: "VoicePrompt — Say it once. Use it anywhere.",
   description:
-    "Speak naturally into any AI tool. We transform messy thoughts into clear, professional prompts — optimized for 50+ AI tools.",
+    "Turn natural speech into polished, tool-ready prompts for ChatGPT, Claude, Cursor, Midjourney, and 50+ AI tools.",
   openGraph: {
-    title: "VoicePrompt — Your voice, perfected prompts",
+    title: "VoicePrompt — Say it once. Use it anywhere.",
     description:
-      "Speak naturally into any AI tool. We transform messy thoughts into clear, professional prompts — optimized for 50+ AI tools.",
+      "Turn natural speech into polished, tool-ready prompts for ChatGPT, Claude, Cursor, Midjourney, and 50+ AI tools.",
     type: "website",
     locale: "en_US",
     siteName: "VoicePrompt",
   },
   twitter: {
     card: "summary_large_image",
-    title: "VoicePrompt — Your voice, perfected prompts",
+    title: "VoicePrompt — Say it once. Use it anywhere.",
     description:
-      "Speak naturally into any AI tool. We transform messy thoughts into clear, professional prompts — optimized for 50+ AI tools.",
+      "Turn natural speech into polished, tool-ready prompts for ChatGPT, Claude, Cursor, Midjourney, and 50+ AI tools.",
   },
 };
 
@@ -55,7 +55,7 @@ export default function RootLayout({
       lang="en"
       className={`${manrope.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="flex min-h-dvh flex-col bg-[var(--bg)] text-[var(--text-primary)] antialiased">
+      <body className="flex min-h-dvh flex-col text-[var(--text-primary)] antialiased">
         {children}
       </body>
     </html>

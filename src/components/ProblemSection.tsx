@@ -16,6 +16,14 @@ const BEFORE_PARTS = [
 const AFTER_SNIPPET =
   "Build an admin dashboard in React and TypeScript with Tailwind: user list with search and filters, activity timeline, retention chart with Recharts, and CSV export. Include loading, empty, and error states, responsive layout, and accessible contrast. Pull data from a REST /api/users endpoint with pagination.";
 
+function SparkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+      <path d="M12 3.5 13.9 9l5.6 2-5.6 2-1.9 5.5L10.1 13l-5.6-2 5.6-2L12 3.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function ProblemSection() {
   const { ref, visible } = useRevealOnScroll<HTMLElement>();
 
@@ -23,29 +31,30 @@ export default function ProblemSection() {
     <section
       id="problem"
       ref={ref}
-      className={`reveal-on-scroll bg-[var(--bg-secondary)] py-20 md:py-24 ${visible ? "is-visible" : ""}`}
+      className={`reveal-on-scroll relative overflow-hidden bg-[var(--bg-secondary)] py-20 md:py-28 ${visible ? "is-visible" : ""}`}
     >
       <div className="mx-auto min-w-0 max-w-6xl px-3 min-[400px]:px-4 md:px-8">
-        <h2 className="mb-3 max-w-3xl font-[family-name:var(--font-heading)] text-3xl font-bold leading-[1.1] tracking-[-0.03em] text-[var(--text-primary)] md:text-4xl md:tracking-[-0.032em]">
-          You use AI every day.
+        <p className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[var(--text-tertiary)]">
+          <SparkIcon />
+          The actual problem
+        </p>
+        <h2 className="mb-5 max-w-4xl font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.04] tracking-[-0.045em] text-[var(--text-primary)] md:text-6xl">
+          The best prompt is usually hiding inside a messy thought.
         </h2>
-        <p className="mb-10 max-w-3xl text-2xl font-semibold leading-snug tracking-[-0.025em] text-[var(--text-secondary)] md:text-3xl">
-          Your prompts hold you back.
+        <p className="mb-12 max-w-2xl text-[1.0625rem] font-medium leading-[1.75] tracking-[-0.01em] text-[var(--text-secondary)]">
+          Instead of asking you to write like a prompt engineer, VoicePrompt lets you speak naturally,
+          then turns that into a clean request with structure, context, and constraints.
         </p>
-        <p className="mb-12 max-w-2xl text-[1.0625rem] leading-[1.7] tracking-[-0.012em] text-[var(--text-secondary)]">
-          Rambling voice notes and vague requests waste time. VoicePrompt turns what you mean into
-          clear, tool-ready prompts.
-        </p>
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="card">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--error)]">
-              Before
+        <div className="grid gap-5 md:grid-cols-[0.92fr_1.08fr] md:items-stretch">
+          <div className="card hover-lift relative overflow-hidden">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+              Raw thought
             </p>
-            <p className="font-[family-name:var(--font-mono)] text-sm italic leading-relaxed text-[var(--text-tertiary)]">
+            <p className="font-[family-name:var(--font-mono)] text-sm italic leading-relaxed text-[var(--text-secondary)]">
               &ldquo;
               {BEFORE_PARTS.map((p, i) =>
                 p.h ? (
-                  <mark key={i} className="bg-pink-100 text-[var(--text-secondary)]">
+                  <mark key={i} className="rounded-md bg-[rgba(17,17,17,0.06)] px-1 text-[var(--text-secondary)]">
                     {p.t}
                   </mark>
                 ) : (
@@ -54,13 +63,23 @@ export default function ProblemSection() {
               )}
               &rdquo;
             </p>
+            <div className="mt-5 flex gap-1.5">
+              {[34, 58, 28, 76, 44, 64].map((height, index) => (
+                <span
+                  key={`${height}-${index}`}
+                  className="w-2 rounded-full bg-[rgba(17,17,17,0.12)]"
+                  style={{ height }}
+                  aria-hidden
+                />
+              ))}
+            </div>
           </div>
-          <div className="card card-active">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--success)]">
-              After
+          <div className="card card-active hover-lift relative overflow-hidden">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+              Prompt engineered
             </p>
-            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-interactive)] px-2.5 py-1 text-[10px] font-medium text-[var(--text-tertiary)]">
-              <span>⚡</span> Cursor
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-interactive)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
+              <SparkIcon /> Cursor ready
             </p>
             <p className="font-[family-name:var(--font-mono)] text-sm leading-relaxed text-[var(--text-primary)]">
               {AFTER_SNIPPET}

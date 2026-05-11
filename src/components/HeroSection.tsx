@@ -61,7 +61,7 @@ export default function HeroSection({
     heroState === "recording" || heroState === "reviewing" || heroState === "processing";
 
   return (
-    <section id="top" className="scroll-mt-14 bg-[var(--bg)]">
+    <section id="top" className="scroll-mt-16">
       {heroState === "landing" ? (
         <div className="animate-fade-in">
           <LandingState onStartSpeaking={onStartSpeaking} />

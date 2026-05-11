@@ -105,6 +105,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const prefixRef = useRef("");
   const isStoppingRef = useRef(false);
+  const isListeningRef = useRef(false);
   const onInterimRef = useRef(onInterim);
 
   useEffect(() => {
@@ -118,6 +119,11 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
   const interimRef = useRef("");
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<SpeechRecognitionErrorCode | null>(null);
+
+  const setListening = useCallback((next: boolean) => {
+    isListeningRef.current = next;
+    setIsListening(next);
+  }, []);
 
   useEffect(() => {
     const recognition = createSpeechRecognition();
@@ -159,12 +165,12 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       if (event.error === "aborted" && isStoppingRef.current) return;
       setErrorCode(event.error);
       setError(ERROR_MESSAGES[event.error] ?? "Voice recognition failed.");
-      setIsListening(false);
+      setListening(false);
       isStoppingRef.current = false;
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      setListening(false);
       if (isStoppingRef.current) isStoppingRef.current = false;
     };
 
@@ -175,7 +181,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
         /* ignore */
       }
     };
-  }, []);
+  }, [setListening]);
 
   const start = useCallback((appendAfter?: string) => {
     const recognition = recognitionRef.current;
@@ -183,6 +189,7 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
       setError("Speech recognition is not supported in this browser.");
       return;
     }
+    if (isListeningRef.current) return;
     const trimmed = appendAfter?.trim();
     prefixRef.current = trimmed ? `${trimmed} ` : "";
     setError(null);
@@ -194,20 +201,28 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
     isStoppingRef.current = false;
     try {
       recognition.start();
-      setIsListening(true);
-    } catch {
-      setError("Could not start microphone. Check permissions and try again.");
+      setListening(true);
+    } catch (error) {
+      const message = error instanceof DOMException && error.name === "InvalidStateError"
+        ? "Voice recognition is already warming up. Try again in a moment."
+        : "Could not start microphone. Check permissions and try again.";
+      setError(message);
       setErrorCode(null);
-      setIsListening(false);
+      setListening(false);
     }
-  }, []);
+  }, [setListening]);
 
   const stop = useCallback(() => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
     isStoppingRef.current = true;
-    recognition.stop();
-  }, []);
+    try {
+      recognition.stop();
+    } catch {
+      isStoppingRef.current = false;
+      setListening(false);
+    }
+  }, [setListening]);
 
   const reset = useCallback(() => {
     setSessionFinals("");

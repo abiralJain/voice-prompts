@@ -1,28 +1,34 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMicVolume } from "@/hooks/useMicVolume";
 import { useSpeechRecognition, useSpeechSupported } from "@/lib/speechRecognition";
 import EditableTranscript from "./EditableTranscript";
-import type { OrbVisualizerState } from "./OrbVisualizer";
-
-const OrbVisualizer = dynamic(() => import("./OrbVisualizer"), {
-  ssr: false,
-  loading: () => (
-    <div
-      className="mx-auto animate-pulse rounded-full bg-[#F2F0ED]"
-      style={{ width: "clamp(150px, 40vw, 200px)", height: "clamp(150px, 40vw, 200px)" }}
-    />
-  ),
-});
+import OrbVisualizer, { type OrbVisualizerState } from "./OrbVisualizer";
 
 const PROCESSING_MESSAGES = [
-  "Understanding your intent...",
-  "Matching with the best tools...",
-  "Crafting your perfect prompt...",
-  "Almost there...",
+  "Listening for intent...",
+  "Mapping the best AI tools...",
+  "Engineering the prompt structure...",
+  "Polishing the final wording...",
 ];
+
+function MicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+      <path d="M12 4.5a3.5 3.5 0 0 0-3.5 3.5v4a3.5 3.5 0 1 0 7 0V8A3.5 3.5 0 0 0 12 4.5Z" fill="currentColor" />
+      <path d="M6 11.5v.75a6 6 0 0 0 12 0v-.75M12 18.25V21" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+      <rect x="7.5" y="7.5" width="9" height="9" rx="2" fill="currentColor" />
+    </svg>
+  );
+}
 
 function ProcessingView() {
   const [msgIndex, setMsgIndex] = useState(0);
@@ -34,23 +40,29 @@ function ProcessingView() {
   }, []);
 
   return (
-    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-8 bg-[var(--bg)] px-3 pb-12 pt-12 min-[400px]:px-4 md:pb-24">
-      <OrbVisualizer volume={0} state="thinking" />
-      <div className="min-h-[3rem] text-center">
-        <p
-          key={msgIndex}
-          className="text-sm text-[#6b6b6b] [animation:status-fade_0.45s_ease-out_forwards]"
-        >
-          {PROCESSING_MESSAGES[msgIndex]}
-        </p>
-      </div>
-      <div className="h-1 w-full max-w-xs overflow-hidden rounded-full bg-[var(--border)]">
-        <div
-          className="h-full w-full rounded-full bg-[var(--accent-brand)]"
-          style={{
-            animation: "processing-bar 2.8s ease-in-out infinite",
-          }}
-        />
+    <div className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center gap-8 px-3 pb-12 pt-12 min-[400px]:px-4 md:pb-24">
+      <div className="ink-panel flex w-full max-w-2xl flex-col items-center gap-8 rounded-[2rem] px-5 py-12 text-center">
+        <OrbVisualizer volume={0} state="thinking" />
+        <div>
+          <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-white/42">Prompt lab running</p>
+          <h2 className="text-3xl font-extrabold tracking-[-0.05em] text-white md:text-4xl">Turning speech into structure</h2>
+        </div>
+        <div className="min-h-[3rem] text-center">
+          <p
+            key={msgIndex}
+            className="text-sm font-semibold text-white/62 [animation:status-fade_0.45s_var(--ease-out)_forwards]"
+          >
+            {PROCESSING_MESSAGES[msgIndex]}
+          </p>
+        </div>
+        <div className="h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full w-2/3 rounded-full bg-[linear-gradient(90deg,var(--accent-brand),var(--accent-brand-2))]"
+            style={{
+              animation: "processing-bar 2.4s var(--ease-in-out) infinite",
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -122,7 +134,7 @@ export default function RecordingState({
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
 
-  const showReviewUI = phase === "reviewing" || supported === false;
+  const showReviewUI = phase === "reviewing";
   const showShortWarning =
     showReviewUI && wordCount(transcript) > 0 && wordCount(transcript) < 10;
 
@@ -207,6 +219,7 @@ export default function RecordingState({
     if (speech.isListening) speech.stop();
     const merged = speech.getMergedTranscript();
     const audioBlob = await stopLocalRecording();
+    stopMic();
 
     let nextTranscript = merged;
     const needsServerTranscription = audioBlob && (speech.errorCode === "network" || !nextTranscript.trim());
@@ -233,6 +246,7 @@ export default function RecordingState({
     onTranscriptChange,
     speech,
     stopLocalRecording,
+    stopMic,
     transcribeRecording,
   ]);
 
@@ -247,7 +261,7 @@ export default function RecordingState({
     if (processing || showReviewUI) return;
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
-      if (cancelled || !supported) return;
+      if (cancelled) return;
       const t = transcriptRef.current;
       void beginListening(t.trim() ? t : undefined);
     }, 400);
@@ -255,16 +269,16 @@ export default function RecordingState({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [beginListening, processing, showReviewUI, supported]);
+  }, [beginListening, processing, showReviewUI]);
 
   useEffect(() => {
     if (showReviewUI || processing) return;
-    if (!speech.isListening) return;
+    if (!speech.isListening && !isRecordingAudio) return;
     const id = window.setInterval(() => {
       setElapsedSeconds((s) => s + 1);
     }, 1000);
     return () => window.clearInterval(id);
-  }, [speech.isListening, showReviewUI, processing]);
+  }, [isRecordingAudio, speech.isListening, showReviewUI, processing]);
 
   const orbState: OrbVisualizerState = processing
     ? "thinking"
@@ -272,7 +286,8 @@ export default function RecordingState({
       ? "listening"
       : "idle";
 
-  const canRefine = wordCount(transcript) >= 10 && !processing && !isTranscribing;
+  const currentWordCount = wordCount(transcript);
+  const canRefine = currentWordCount >= 10 && !processing && !isTranscribing;
   const isCapturing = speech.isListening || isRecordingAudio || isTranscribing;
 
   const toggleListening = () => {
@@ -311,85 +326,123 @@ export default function RecordingState({
 
   if (!showReviewUI) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[var(--bg)] px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-8 min-[400px]:gap-8 min-[400px]:px-4 min-[400px]:pb-16 min-[400px]:pt-10">
-        <p className="font-[family-name:var(--font-mono)] text-sm text-[#9b9b9b]">{formatTime(elapsedSeconds)}</p>
+      <div className="flex min-h-[calc(100dvh-4rem)] flex-col items-center gap-6 px-3 pb-[max(4rem,env(safe-area-inset-bottom))] pt-8 min-[400px]:gap-8 min-[400px]:px-4 min-[400px]:pb-16 min-[400px]:pt-10">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 rounded-[2rem] border border-[var(--border)] bg-[rgba(255,252,245,0.56)] p-4 shadow-[var(--shadow-card)] backdrop-blur-xl min-[400px]:p-6 md:p-8">
+          <div className="flex w-full items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                {isCapturing ? "Recording live" : "Voice studio"}
+              </p>
+              <p className="font-[family-name:var(--font-mono)] text-sm font-semibold text-[var(--text-secondary)]">
+                {formatTime(elapsedSeconds)}
+              </p>
+            </div>
+            <div className="flex h-9 items-end gap-1.5 rounded-full border border-[var(--border)] bg-[rgba(255,252,245,0.7)] px-3 py-2">
+              {[0, 1, 2, 3, 4].map((bar) => (
+                <span
+                  key={bar}
+                  className={`w-1.5 rounded-full ${isCapturing ? "bg-[var(--accent-brand)]" : "bg-[var(--border-hover)]"}`}
+                  style={{
+                    height: `${8 + bar * 3}px`,
+                    animation: isCapturing ? `meter ${560 + bar * 80}ms ease-in-out infinite` : undefined,
+                  }}
+                  aria-hidden
+                />
+              ))}
+            </div>
+          </div>
 
-        <OrbVisualizer volume={volume} state={orbState} />
+          <OrbVisualizer volume={volume} state={orbState} />
 
-        <div className="flex flex-col items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleListening}
-            disabled={!supported || isTranscribing}
-            className={`flex h-[52px] w-[52px] min-[400px]:h-16 min-[400px]:w-16 items-center justify-center rounded-full text-xl font-bold shadow-[var(--shadow-md)] transition disabled:opacity-40 ${
-              isCapturing
-                ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
-                : "border-2 border-[var(--border)] bg-[var(--bg-interactive)] text-[#1a1a1a] hover:border-[var(--border-hover)]"
-            }`}
-            aria-label={isCapturing ? "Stop recording" : "Start speaking"}
-          >
-            {isCapturing ? "■" : "🎤"}
-          </button>
-          <p className="text-center text-xs text-[#9b9b9b]">
-            {isTranscribing
-              ? "Converting your voice to text..."
-              : isCapturing
-                ? "Tap when you're done — opens transcript"
-                : "Tap to speak"}
-          </p>
-          {!isCapturing ? (
+          <div className="flex w-full flex-col items-center gap-3">
             <button
               type="button"
-              onClick={goToReview}
-              className="mt-2 text-sm font-medium text-[#6b6b6b] underline-offset-4 hover:text-[#1a1a1a] hover:underline"
+              onClick={toggleListening}
+              disabled={isTranscribing}
+              className={`group relative flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold shadow-[var(--shadow-md)] transition disabled:opacity-40 min-[400px]:h-20 min-[400px]:w-20 ${
+                isCapturing
+                  ? "bg-[var(--bg-ink)] text-white shadow-[0_18px_42px_rgba(17,17,17,0.22),0_0_0_9px_rgba(17,17,17,0.045)] hover:bg-[#26231f]"
+                  : "border border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-primary)] hover:border-[var(--border-hover)]"
+              }`}
+              aria-label={isCapturing ? "Stop recording" : "Start speaking"}
             >
-              Edit transcript without recording →
+              {isCapturing ? (
+                <>
+                  <span className="absolute inset-[-7px] rounded-full border border-[var(--bg-ink)]/10" aria-hidden />
+                  <StopIcon />
+                </>
+              ) : (
+                <MicIcon />
+              )}
             </button>
+            <p className="max-w-md text-center text-sm font-semibold text-[var(--text-secondary)]">
+              {isTranscribing
+                ? "Converting your voice to text..."
+                : isCapturing
+                  ? "Tap stop when you're done. Your audio is being captured even if live captions pause."
+                  : "Tap once and speak naturally."}
+            </p>
+            {!isCapturing ? (
+              <button type="button" onClick={goToReview} className="btn-ghost mt-1 text-sm">
+                Type instead
+              </button>
+            ) : null}
+          </div>
+
+          <div className="max-h-48 min-h-24 w-full overflow-y-auto rounded-[1.5rem] border border-[var(--border)] bg-[rgba(255,252,245,0.64)] p-4 text-center">
+            <p className="text-base font-medium leading-relaxed text-[var(--text-secondary)]">
+              {transcript ||
+                "Your transcript will appear here when browser speech recognition is available. If it is not, we will transcribe the recording after you stop."}
+              {isCapturing ? (
+                <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-[var(--accent-brand)] align-middle" />
+              ) : null}
+            </p>
+          </div>
+
+          {!supported ? (
+            <p className="max-w-md rounded-2xl border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-4 py-3 text-center text-sm font-semibold text-[var(--warning)]">
+              Live captions work best in Chrome or Edge. Recording can still use server transcription after you stop.
+            </p>
+          ) : null}
+          {speech.errorCode === "network" && isRecordingAudio ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className="max-w-md rounded-2xl border border-[var(--warning)]/20 bg-[rgba(154,101,15,0.08)] px-4 py-3 text-center text-sm font-semibold text-[var(--warning)]"
+            >
+              Live captions are unavailable right now. Keep speaking, then tap stop and we&apos;ll transcribe
+              the recording.
+            </p>
+          ) : speech.error ? (
+            <p className="max-w-md rounded-2xl border border-[var(--error)]/20 bg-[rgba(184,50,60,0.08)] px-4 py-3 text-center text-sm font-semibold text-[var(--error)]">
+              {speech.error}
+            </p>
+          ) : null}
+          {transcriptionError ? (
+            <p className="max-w-md text-center text-sm text-[var(--error)]">{transcriptionError}</p>
           ) : null}
         </div>
-
-        <div className="max-h-44 w-full max-w-2xl overflow-y-auto px-1 text-center">
-          <p className="text-base leading-relaxed text-[#6b6b6b]">
-            {transcript || "\u00a0"}
-            {isCapturing ? (
-              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-[var(--accent-brand)] align-middle" />
-            ) : null}
-          </p>
-        </div>
-
-        {!supported ? (
-          <p className="max-w-md text-center text-sm text-[var(--warning)]">
-            Voice works best in Chrome or Edge. Use Review transcript to type your prompt.
-          </p>
-        ) : null}
-        {speech.error ? <p className="text-center text-sm text-[var(--error)]">{speech.error}</p> : null}
-        {speech.errorCode === "network" && isRecordingAudio ? (
-          <p className="max-w-md text-center text-sm text-[var(--warning)]">
-            Browser speech recognition is unavailable, but recording is still running. Tap stop and
-            we&apos;ll transcribe it another way.
-          </p>
-        ) : null}
-        {transcriptionError ? (
-          <p className="max-w-md text-center text-sm text-[var(--error)]">{transcriptionError}</p>
-        ) : null}
       </div>
     );
   }
 
   return (
-    <div className="animate-fade-in flex min-h-[calc(100dvh-3.5rem)] flex-col items-center gap-6 bg-[var(--bg)] px-3 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 min-[400px]:px-4 min-[400px]:pb-12 min-[400px]:pt-8 md:pb-20">
-      <div className="w-full min-w-0 max-w-2xl space-y-4">
+    <div className="animate-fade-in flex min-h-[calc(100dvh-4rem)] flex-col items-center gap-6 px-3 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 min-[400px]:px-4 min-[400px]:pb-12 min-[400px]:pt-8 md:pb-20">
+      <div className="glass-panel w-full min-w-0 max-w-3xl space-y-5 rounded-[2rem] p-4 min-[400px]:p-6 md:p-8">
         <div>
-          <p className="text-xs text-[#9b9b9b]">Here&apos;s what we heard:</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Review transcript</p>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-[var(--text-primary)] md:text-4xl">
+            Here&apos;s what we heard
+          </h2>
           {recordedLabel ? (
-            <p className="font-[family-name:var(--font-mono)] text-sm text-[#6b6b6b]">
+            <p className="mt-2 font-[family-name:var(--font-mono)] text-sm font-semibold text-[var(--text-secondary)]">
               Recorded {recordedLabel}
             </p>
           ) : null}
         </div>
 
         {!supported ? (
-          <p className="text-center text-sm text-[var(--warning)]">
+          <p className="rounded-2xl border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-4 py-3 text-center text-sm font-semibold text-[var(--warning)]">
             Voice works best in Chrome or Edge. Edit your transcript below.
           </p>
         ) : null}
@@ -405,9 +458,9 @@ export default function RecordingState({
           <p
             role="status"
             aria-live="polite"
-            className="text-center text-sm font-medium text-[var(--warning)]"
+            className="rounded-2xl border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-4 py-3 text-center text-sm font-bold text-[var(--warning)]"
           >
-            That seems a bit short. Add more detail for better results.
+            Add a little more detail for better results. You have {currentWordCount}/10 words.
           </p>
         ) : null}
 
@@ -418,7 +471,7 @@ export default function RecordingState({
             onClick={onRefine}
             className="btn-hero-cta min-h-12 w-full max-w-md py-3.5 min-[400px]:py-4 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none"
           >
-            Refine Prompt →
+            Refine prompt
           </button>
           {supported ? (
             <button
